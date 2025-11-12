@@ -18,7 +18,7 @@ Before running the installation script, ensure you have:
 ## Installation
 
 ```bash
-git clone https://git.drupalcode.org/project/openintranet_rag_demo.git
+git clone https://github.com/droptica/openintranet_rag_demo.git
 cd openintranet_rag_demo
 ./launch_openintranet_with_rag_demo.sh
 ```
