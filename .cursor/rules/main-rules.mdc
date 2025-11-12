@@ -1,0 +1,188 @@
+---
+alwaysApply: true
+---
+
+# Project information
+
+This is example how to connect Open Intranet with RAG database - Milvus VDB
+
+## About Open Intranet
+
+Open Intranet is a Drupal starter kit for building company intranet sites. It includes features for collaboration, communication, news, events, and document sharing, helping organizations quickly launch flexible internal portals.
+
+
+## About Milvus RAG
+
+Milvus RAG is a retrieval-augmented generation (RAG) system using Milvus, a vector database. It enables efficient storage, search, and retrieval of embeddings to provide accurate, context-aware answers from large unstructured data sources.
+
+
+## About Drupal Module: Milvus VDB Provider
+
+The Milvus VDB Provider module integrates the Milvus vector database with Drupal, allowing fast and scalable storage, indexing, and querying of embeddings from textual content. It enables advanced similarity search and retrieval-augmented generation (RAG) scenarios, enhancing AI-driven content discovery in Drupal.
+
+
+## Project Structure
+
+```
+openintranet_rag_demo/
+├── launch_openintranet_with_rag_demo.sh  # Main setup script
+├── recipes/
+│   └── openintranet_milvus_rag/          # Drupal recipe for Milvus integration
+│       ├── recipe.yml
+│       ├── composer.json
+│       └── config/
+│           └── ai_vdb_provider_milvus.settings.yml
+└── openintranet_source_code/
+    └── openintranet/                      # Cloned Open Intranet repository
+```
+
+
+## Setup Script: launch_openintranet_with_rag_demo.sh
+
+Automated installation script that performs:
+
+1. **Repository** - Clone/manage Open Intranet from Drupal.org
+2. **Milvus Docker** - Download docker-compose config for Milvus VDB
+3. **DDEV Config** - Configure DDEV project (Drupal 10, PHP 8.3)
+4. **DDEV Start** - Start containers (web, db, Milvus)
+5. **Composer** - Install dependencies
+6. **Custom Commands** - Copy DDEV commands to `.ddev/commands/`
+7. **Starter Theme** - Copy to `web/themes/custom/`
+8. **Milvus Module** - Require `drupal/ai_vdb_provider_milvus:^1.1@beta`
+9. **Recipe Copy** - Copy `openintranet_milvus_rag` recipe to project
+10. **Drupal Install** - Site install with demo content
+11. **Apply Recipe** - Apply Milvus RAG recipe configuration
+12. **Cache Clear** - Clear Drupal cache
+13. **Login Link** - Generate one-time login URL
+
+
+## DDEV Commands for Debugging and Development
+
+Common DDEV commands for AI/LLM debugging and development tasks:
+
+### Database Operations
+```bash
+# Drop all database tables (useful for clean reinstall)
+ddev drush sql:drop -y
+
+# Export database dump
+ddev drush sql:dump > backup.sql
+
+# Import database dump
+ddev drush sql:cli < backup.sql
+```
+
+### User Authentication
+```bash
+# Generate one-time login link for admin user
+ddev drush uli
+
+# Generate login link for specific user
+ddev drush uli --name=username
+```
+
+### Configuration Management
+```bash
+# Export current configuration
+ddev drush config:export -y
+
+# Import configuration from files
+ddev drush config:import -y
+
+# Get specific config value
+ddev drush config:get system.site name
+
+# Set specific config value
+ddev drush config:set system.site name "New Site Name" -y
+```
+
+### PHP Code Execution
+```bash
+# Execute PHP code snippet
+ddev drush php:eval "print_r(\Drupal::config('ai_vdb_provider_milvus.settings')->get());"
+
+# Run PHP script file
+ddev drush php:script /path/to/script.php
+
+# Interactive PHP REPL
+ddev drush php
+```
+
+### Log and Error Debugging
+```bash
+# Show recent log messages (dblog)
+ddev drush watchdog:show
+
+# Show only error messages
+ddev drush watchdog:show --severity=Error
+
+# Show last 50 entries with full details
+ddev drush watchdog:show --count=50 --extended
+
+# Tail log messages in real-time
+ddev drush watchdog:tail
+
+# Clear log messages
+ddev drush watchdog:delete all -y
+```
+
+### Cache Management
+```bash
+# Clear all caches
+ddev drush cache:rebuild
+
+# Clear specific cache bin
+ddev drush cache:clear render
+```
+
+### Module and Content Management
+```bash
+# Enable module
+ddev drush pm:enable module_name -y
+
+# Uninstall module
+ddev drush pm:uninstall module_name -y
+
+# List all modules
+ddev drush pm:list
+
+# Show module status
+ddev drush pm:list --status=enabled
+```
+
+### Search API Operations (for RAG/Milvus debugging)
+```bash
+# Reindex all search indexes
+ddev drush search-api:reindex
+
+# Check indexing status
+ddev drush search-api:status
+
+# Clear all indexed items
+ddev drush search-api:clear
+
+# Index items immediately
+ddev drush search-api:index
+```
+
+### General DDEV Commands
+```bash
+# SSH into web container
+ddev ssh
+
+# Execute command in container
+ddev exec [command]
+
+# View logs
+ddev logs
+
+# Restart DDEV
+ddev restart
+
+# Stop DDEV
+ddev stop
+
+# Get project info
+ddev describe
+```
+

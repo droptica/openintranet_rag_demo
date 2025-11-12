@@ -1,0 +1,10 @@
+{
+  "name": "openintranet/openintranet_milvus_rag",
+  "description": "Open Intranet Milvus RAG Recipe - Automatic configuration for Milvus Vector Database integration with AI-powered RAG.",
+  "type": "drupal-recipe",
+  "license": "GPL-2.0-or-later",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "version": "1.0.0"
+}
+

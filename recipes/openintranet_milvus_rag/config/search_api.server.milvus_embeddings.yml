@@ -1,0 +1,24 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - ai_search
+    - ai_vdb_provider_milvus
+id: milvus_embeddings
+name: 'Milvus Embeddings Server'
+description: 'Search API server using AI embeddings with Milvus vector database'
+backend: search_api_ai_search
+backend_config:
+  embeddings_engine: 'openai__text-embedding-3-small'
+  embeddings_engine_configuration:
+    dimensions: 1536
+  embedding_strategy: 'contextual_chunks'
+  embedding_strategy_configuration:
+    chunk_size: 600
+    chunk_min_overlap: 50
+  chat_model: 'gpt-3.5-turbo'
+  database: 'milvus'
+  database_settings:
+    database_name: 'default'
+    collection: 'openintranet_knowledge_base'
+    metric: 'cosine_similarity'

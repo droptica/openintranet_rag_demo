@@ -1,0 +1,25 @@
+name: '[Open Intranet] Milvus RAG Configuration'
+type: 'AI Integration'
+description: 'Automatic configuration for Milvus Vector Database integration with Open Intranet. Configures AI modules, Milvus VDB provider, Search API with embeddings for Knowledge Base content, and example RAG search page.'
+install:
+  - ai
+  - ai_search
+  - key
+  - ai_vdb_provider_milvus
+  - search_api
+  - node
+  - views
+config:
+  strict: false
+  import:
+    key:
+      - key.key.openai_api_key
+    ai_vdb_provider_milvus:
+      - ai_vdb_provider_milvus.settings
+    ai_provider_openai:
+      - ai_provider_openai.settings
+    search_api:
+      - search_api.server.milvus_embeddings
+      - search_api.index.knowledge_base_content
+    views:
+      - views.view.rag_search_example

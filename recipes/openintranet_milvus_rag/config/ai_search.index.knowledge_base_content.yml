@@ -1,0 +1,21 @@
+index_id: knowledge_base_content
+control_field_max_length: false
+exclude_chunk_from_metadata: false
+indexing_options:
+  title:
+    field_name: title
+    indexing_option: contextual_content
+    max: 0
+  rendered_item:
+    field_name: rendered_item
+    indexing_option: main_content
+    max: 0
+  nid:
+    field_name: nid
+    indexing_option: filter
+    max: 0
+  uid:
+    field_name: uid
+    indexing_option: filter
+    max: 0
+
