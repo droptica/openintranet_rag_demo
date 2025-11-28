@@ -33,3 +33,44 @@ diff --git a/src/Base/AiVdbProviderClientBase.php b/src/Base/AiVdbProviderClient
          return !($cardinality === 1);
        }
      }
+
+diff --git a/modules/ai_search/src/Plugin/EmbeddingStrategy/EmbeddingBase.php b/modules/ai_search/src/Plugin/EmbeddingStrategy/EmbeddingBase.php
+--- a/modules/ai_search/src/Plugin/EmbeddingStrategy/EmbeddingBase.php
++++ b/modules/ai_search/src/Plugin/EmbeddingStrategy/EmbeddingBase.php
+@@ -417,25 +417,32 @@ abstract class EmbeddingBase extends PluginBase implements EmbeddingStrategyInte
+       // Do nothing, we can just index the values for this type of field.
+     }
+ 
++    // Check if the field is a list type - if so, always return an array even
++    // for single values. This ensures array_contains() filters work correctly.
++    $definition = $field->getDataDefinition();
++    $isList = $definition && $definition->isList();
++
+     // Always composite if field supports multiple. Otherwise, if the field is
+     // a single value, we can choose base on the field type At some point we
+     // probably need to consider what field types the Vector Database supports
+     // as metadata, but for now let's assume, strings, floats, integers, and
+     // boolean values are fine for all.
+-    if (in_array($field->getType(), ['date', 'boolean', 'integer']) && count($values) === 1) {
++    if (!$isList && in_array($field->getType(), ['date', 'boolean', 'integer']) && count($values) === 1) {
+       return (int) reset($values);
+     }
+-    elseif (in_array($field->getType(), ['boolean']) && count($values) === 1) {
++    elseif (!$isList && in_array($field->getType(), ['boolean']) && count($values) === 1) {
+       return (bool) reset($values);
+     }
+-    elseif (in_array($field->getType(), ['decimal']) && count($values) === 1) {
++    elseif (!$isList && in_array($field->getType(), ['decimal']) && count($values) === 1) {
+       return (float) reset($values);
+     }
+-    elseif (count($values) == 1) {
++    elseif (!$isList && count($values) == 1) {
+       return $this->converter->convert((string) reset($values));
+     }
+-    elseif (count($values) > 1) {
+-
++    elseif (count($values) >= 1) {
++      // For list fields or multiple values, always return an array.
+       // Some Vector Databases support arrays, return that in the metadata
+       // and leave it to the Provider to flatten if needed.
+       $parts = [];

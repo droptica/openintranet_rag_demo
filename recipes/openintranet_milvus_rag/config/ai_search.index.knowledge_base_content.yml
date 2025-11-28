@@ -26,3 +26,7 @@ indexing_options:
     field_name: role_access
     indexing_option: attributes
     max: 0
+  status:
+    field_name: status
+    indexing_option: attributes
+    max: 0
