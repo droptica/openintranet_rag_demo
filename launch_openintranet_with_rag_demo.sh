@@ -420,11 +420,12 @@ install_drupal_modules() {
     else
         echo ""
         log "INFO" "Adding Milvus VDB Provider module..."
-        log "INFO" "Package: drupal/ai_vdb_provider_milvus:^1.1@beta"
+        log "INFO" "Package: drupal/ai_vdb_provider_milvus:1.1.x-dev"
         log "INFO" "Source: https://www.drupal.org/project/ai_vdb_provider_milvus"
+        log "INFO" "Note: Using dev version for latest bug fixes (including #3523510)"
         echo ""
 
-        (cd "$repo_dir" && ddev composer require 'drupal/ai_vdb_provider_milvus:^1.1@beta')
+        (cd "$repo_dir" && ddev composer require 'drupal/ai_vdb_provider_milvus:1.1.x-dev')
 
         if [ $? -eq 0 ]; then
             echo ""
@@ -434,6 +435,114 @@ install_drupal_modules() {
             echo -e "${RED}${BOLD}✗ Failed to add Milvus VDB Provider module!${NC}"
             exit 1
         fi
+    fi
+
+    echo ""
+}
+
+# Apply patches to AI module (drupal/ai - NOT ai_vdb_provider_milvus!)
+# Fixes: AiVdbProviderClientBase::isMultiple() crashes on computed fields
+# when getDatasourceId() returns NULL (for computed fields like node_grants, role_access)
+#
+# Note: This is DIFFERENT from Drupal.org issue #3523510 which fixes MilvusProvider.php
+# That fix is already included in ai_vdb_provider_milvus:1.1.x-dev
+# This patch fixes the BASE class in drupal/ai module
+apply_ai_module_patches() {
+    local workspace_root
+    workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local repo_dir="${workspace_root}/openintranet_source_code/openintranet"
+    local patch_source="${workspace_root}/patches/ai/fix-isMultiple-null-datasource.patch"
+    local patch_target_dir="${repo_dir}/patches/ai"
+
+    echo ""
+    echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}Step: AI Module Patches${NC}"
+    echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    # Check if patch source exists
+    if [ ! -f "$patch_source" ]; then
+        echo ""
+        log "WARN" "AI module patch not found at: $patch_source"
+        log "WARN" "Skipping patch application..."
+        echo ""
+        return 0
+    fi
+
+    # Check if patch is already configured in composer.json
+    if grep -q "fix-isMultiple-null-datasource.patch" "$repo_dir/composer.json" 2>/dev/null; then
+        echo ""
+        log "INFO" "AI module patch already configured in composer.json"
+        echo ""
+        return 0
+    fi
+
+    echo ""
+    log "INFO" "Applying AI module patch for isMultiple() null datasource fix..."
+    log "INFO" "This fixes PHP deprecation warnings with computed fields (node_grants, role_access, etc.)"
+    echo ""
+
+    # Create patches directory in project
+    mkdir -p "$patch_target_dir"
+
+    # Copy patch file
+    cp "$patch_source" "$patch_target_dir/"
+
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo -e "${YELLOW}${BOLD}⚠ Warning: Failed to copy patch file${NC}"
+        return 1
+    fi
+
+    log "INFO" "✓ Patch file copied to: patches/ai/fix-isMultiple-null-datasource.patch"
+
+    # Add patch configuration to composer.json using jq or php
+    echo ""
+    log "INFO" "Configuring patch in composer.json..."
+
+    # Use ddev exec php to add patch configuration
+    (cd "$repo_dir" && ddev exec php -r "
+        \$composerJson = json_decode(file_get_contents('composer.json'), true);
+
+        // Ensure extra.patches section exists
+        if (!isset(\$composerJson['extra'])) {
+            \$composerJson['extra'] = [];
+        }
+        if (!isset(\$composerJson['extra']['patches'])) {
+            \$composerJson['extra']['patches'] = [];
+        }
+
+        // Add the patch for drupal/ai
+        \$composerJson['extra']['patches']['drupal/ai'] = [
+            'Fix isMultiple() null datasource for computed fields' => 'patches/ai/fix-isMultiple-null-datasource.patch'
+        ];
+
+        // Write back
+        file_put_contents('composer.json', json_encode(\$composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+        echo 'Patch configuration added to composer.json';
+    ")
+
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo -e "${YELLOW}${BOLD}⚠ Warning: Failed to configure patch in composer.json${NC}"
+        return 1
+    fi
+
+    echo ""
+    log "INFO" "✓ Patch configured in composer.json"
+
+    # Re-install composer dependencies to apply patch
+    echo ""
+    log "INFO" "Applying patch via composer install..."
+    echo ""
+
+    (cd "$repo_dir" && ddev composer install)
+
+    if [ $? -eq 0 ]; then
+        echo ""
+        log "INFO" "✓ AI module patch applied successfully"
+    else
+        echo ""
+        echo -e "${YELLOW}${BOLD}⚠ Warning: Patch may not have been applied correctly${NC}"
     fi
 
     echo ""
@@ -851,6 +960,9 @@ copy_starter_theme
 
 # Install additional Drupal modules
 install_drupal_modules
+
+# Apply AI module patches
+apply_ai_module_patches
 
 # Copy Milvus RAG recipe
 copy_milvus_rag_recipe

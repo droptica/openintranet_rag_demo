@@ -14,9 +14,9 @@ backend_config:
     dimensions: 1536
   embedding_strategy: 'contextual_chunks'
   embedding_strategy_configuration:
-    chunk_size: 600
-    chunk_min_overlap: 50
-  chat_model: 'gpt-3.5-turbo'
+    chunk_size: '600'
+    chunk_min_overlap: '50'
+  chat_model: 'openai__gpt-3.5-turbo'
   database: 'milvus'
   database_settings:
     database_name: 'default'

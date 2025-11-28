@@ -2,3 +2,5 @@ tmp
 openintranet_source_code/*
 !openintranet_source_code/.gitkeep
 .playwright-mcp
+.idea
+.vscode
