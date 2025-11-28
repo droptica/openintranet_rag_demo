@@ -1,0 +1,26 @@
+diff --git a/src/Plugin/VdbProvider/MilvusProvider.php b/src/Plugin/VdbProvider/MilvusProvider.php
+--- a/src/Plugin/VdbProvider/MilvusProvider.php
++++ b/src/Plugin/VdbProvider/MilvusProvider.php
+@@ -559,13 +559,17 @@ class MilvusProvider extends AiVdbProviderClientBase implements ContainerFactory
+       else {
+         $normalizedValues = implode(',', $values);
+       }
+       if ($isMultiple) {
+-        if ($condition->getOperator() === '=') {
+-          $filters[] = 'JSON_CONTAINS_ALL(' . $fieldData->getFieldIdentifier() . ', [' . $normalizedValues . '])';
++        $operator = $condition->getOperator();
++        if ($operator === '=' && count($values) === 1) {
++          // For equality check with a single value on a list field,
++          // check if the array contains that value.
++          $filters[] = 'array_contains(' . $fieldData->getFieldIdentifier() . ', ' . $normalizedValues . ')';
+         }
+-        if ($condition->getOperator() === 'IN') {
++        elseif ($operator === 'IN' || ($operator === '=' && count($values) > 1)) {
++          // For IN operator or multiple values, check if any values match.
+           $filters[] = 'JSON_CONTAINS_ANY(' . $fieldData->getFieldIdentifier() . ', [' . $normalizedValues . '])';
+         }
+-        else {
++        elseif (!in_array($operator, ['=', 'IN'])) {
+           $this->messenger->addWarning('The vector database @name does not support negative operator on multiple fields.', [
+             '@name' => $this->getClient()->getPluginId(),
+           ]);

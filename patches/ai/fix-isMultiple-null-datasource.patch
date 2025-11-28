@@ -1,22 +1,35 @@
 diff --git a/src/Base/AiVdbProviderClientBase.php b/src/Base/AiVdbProviderClientBase.php
 --- a/src/Base/AiVdbProviderClientBase.php
 +++ b/src/Base/AiVdbProviderClientBase.php
-@@ -424,7 +424,16 @@ abstract class AiVdbProviderClientBase implements AiVdbProviderInterface, Contai
+@@ -424,12 +424,27 @@ abstract class AiVdbProviderClientBase implements AiVdbProviderInterface, AiVdbP
     */
    public function isMultiple(FieldInterface $field): bool {
      [$fieldName] = explode(':', $field->getPropertyPath());
 -    [, $entity_type] = explode(':', $field->getDatasourceId());
+-    $fields = $this->entityFieldManager->getFieldStorageDefinitions($entity_type);
+-    foreach ($fields as $field) {
+-      if ($field->getName() === $fieldName) {
+-        $cardinality = $field->getCardinality();
 +
 +    // Check if datasource ID is available (computed fields like node_grants,
 +    // role_access, rendered_item don't have a datasource).
 +    $datasourceId = $field->getDatasourceId();
 +    if ($datasourceId === NULL || !str_contains($datasourceId, ':')) {
-+      // For computed fields without a datasource, assume single value.
++      // For computed/processor fields without a datasource, check if the
++      // underlying data definition indicates it's a list.
++      $dataDefinition = $field->getDataDefinition();
++      if ($dataDefinition && $dataDefinition->isList()) {
++        return TRUE;
++      }
++      // Default to single value for computed fields without list definition.
 +      return FALSE;
 +    }
 +
 +    [, $entity_type] = explode(':', $datasourceId);
-     $fields = $this->entityFieldManager->getFieldStorageDefinitions($entity_type);
-     foreach ($fields as $field) {
-       if ($field->getName() === $fieldName) {
-
++    $fields = $this->entityFieldManager->getFieldStorageDefinitions($entity_type);
++    foreach ($fields as $fieldDef) {
++      if ($fieldDef->getName() === $fieldName) {
++        $cardinality = $fieldDef->getCardinality();
+         return !($cardinality === 1);
+       }
+     }

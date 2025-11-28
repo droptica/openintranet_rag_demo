@@ -18,4 +18,11 @@ indexing_options:
     field_name: uid
     indexing_option: filter
     max: 0
-
+  node_grants:
+    field_name: node_grants
+    indexing_option: attributes
+    max: 0
+  role_access:
+    field_name: role_access
+    indexing_option: attributes
+    max: 0
