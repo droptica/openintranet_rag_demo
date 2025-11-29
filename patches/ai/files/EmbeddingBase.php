@@ -437,7 +437,13 @@ class EmbeddingBase extends EmbeddingStrategyPluginBase implements EmbeddingStra
       return (float) reset($values);
     }
     elseif (!$isList && count($values) == 1) {
-      return $this->converter->convert((string) reset($values));
+      // For simple string fields used as metadata/filters (like node_grants,
+      // role_access), don't apply markdown converter as it escapes underscores.
+      // Only apply converter to fulltext/content fields.
+      if (in_array($field->getType(), ['fulltext'])) {
+        return $this->converter->convert((string) reset($values));
+      }
+      return (string) reset($values);
     }
     elseif (count($values) >= 1) {
       // For list fields or multiple values, always return an array.
@@ -446,10 +452,16 @@ class EmbeddingBase extends EmbeddingStrategyPluginBase implements EmbeddingStra
       $parts = [];
       foreach ($values as $value) {
         if (in_array($field->getType(), ['date', 'boolean', 'integer'])) {
-          $parts[] = (int) $this->converter->convert((string) $value);
+          $parts[] = (int) $value;
+        }
+        elseif (in_array($field->getType(), ['fulltext'])) {
+          // Only convert fulltext fields through markdown converter.
+          $parts[] = $this->converter->convert((string) $value);
         }
         else {
-          $parts[] = $this->converter->convert((string) $value);
+          // For simple string fields (like node_grants, role_access),
+          // don't escape underscores.
+          $parts[] = (string) $value;
         }
       }
       return $parts;

@@ -505,38 +505,41 @@ class MilvusProvider extends AiVdbProviderClientBase implements ContainerFactory
   /**
    * {@inheritdoc}
    */
+  /**
+   * {@inheritdoc}
+   */
   public function prepareFilters(QueryInterface $query): string {
-    $filters = [];
     $index = $query->getIndex();
     $condition_group = $query->getConditionGroup();
-    $filters = $this->processConditionGroup($filters, $index, $condition_group);
-    if ($filters) {
-      return implode(' && ', $filters);
-    }
-    return '';
+    return $this->processConditionGroup($index, $condition_group);
   }
 
   /**
    * Processes a condition group, including handling nested condition groups.
    *
-   * @param array $filters
-   *   The filters built thus far.
    * @param \Drupal\search_api\IndexInterface $index
    *   The Search API Index.
    * @param \Drupal\search_api\Query\ConditionGroupInterface $condition_group
    *   The condition group.
    *
-   * @return array
-   *   The updated build of the filters.
+   * @return string
+   *   The filter expression string for Milvus.
    */
-  protected function processConditionGroup(array $filters, IndexInterface $index, ConditionGroupInterface $condition_group): array {
+  protected function processConditionGroup(IndexInterface $index, ConditionGroupInterface $condition_group): string {
+    $filters = [];
+    $conjunction = $condition_group->getConjunction();
+    // Use OR (||) or AND (&&) based on the condition group's conjunction.
+    $conjunctionOperator = ($conjunction === 'OR') ? ' || ' : ' && ';
 
     foreach ($condition_group->getConditions() as $condition) {
 
       // Check if the current condition is actually a nested ConditionGroup.
       if ($condition instanceof ConditionGroupInterface) {
-        // Recursively process the nested ConditionGroup.
-        $filters = $this->processConditionGroup($filters, $index, $condition);
+        // Recursively process the nested ConditionGroup and wrap in parentheses.
+        $nested_filter = $this->processConditionGroup($index, $condition);
+        if ($nested_filter) {
+          $filters[] = '(' . $nested_filter . ')';
+        }
         continue;
       }
 
@@ -560,13 +563,13 @@ class MilvusProvider extends AiVdbProviderClientBase implements ContainerFactory
         $normalizedValues = implode(',', $values);
       }
       if ($isMultiple) {
-        $operator = $condition->getOperator();
-        if ($operator === '=' && count($values) === 1) {
+        $comparisonOperator = $condition->getOperator();
+        if ($comparisonOperator === '=' && count($values) === 1) {
           // For equality check with a single value on a list field,
           // check if the array contains that value.
           $filters[] = 'array_contains(' . $fieldData->getFieldIdentifier() . ', ' . $normalizedValues . ')';
         }
-        elseif ($operator === 'IN' || ($operator === '=' && count($values) > 1)) {
+        elseif ($comparisonOperator === 'IN' || ($comparisonOperator === '=' && count($values) > 1)) {
           // For IN operator or multiple values, check if any values match.
           $filters[] = 'JSON_CONTAINS_ANY(' . $fieldData->getFieldIdentifier() . ', [' . $normalizedValues . '])';
         }
@@ -577,14 +580,18 @@ class MilvusProvider extends AiVdbProviderClientBase implements ContainerFactory
         }
       }
       else {
-        $operator = $condition->getOperator();
-        if ($operator === '=') {
-          $operator = '==';
+        $comparisonOperator = $condition->getOperator();
+        if ($comparisonOperator === '=') {
+          $comparisonOperator = '==';
         }
-        $filters[] = '(' . $fieldData->getFieldIdentifier() . ' ' . $operator . ' ' . $normalizedValues . ')';
+        $filters[] = '(' . $fieldData->getFieldIdentifier() . ' ' . $comparisonOperator . ' ' . $normalizedValues . ')';
       }
     }
-    return $filters;
+    
+    if ($filters) {
+      return implode($conjunctionOperator, $filters);
+    }
+    return '';
   }
 
   /**
@@ -707,3 +714,4 @@ class MilvusProvider extends AiVdbProviderClientBase implements ContainerFactory
   }
 
 }
+
