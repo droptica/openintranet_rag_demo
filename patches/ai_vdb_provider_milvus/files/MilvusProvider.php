@@ -587,7 +587,7 @@ class MilvusProvider extends AiVdbProviderClientBase implements ContainerFactory
         $filters[] = '(' . $fieldData->getFieldIdentifier() . ' ' . $comparisonOperator . ' ' . $normalizedValues . ')';
       }
     }
-    
+
     if ($filters) {
       return implode($conjunctionOperator, $filters);
     }
