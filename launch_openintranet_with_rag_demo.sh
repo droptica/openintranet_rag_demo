@@ -440,11 +440,12 @@ install_drupal_modules() {
     echo ""
 }
 
-# Apply all patches for AI and Milvus modules
+# Apply all patches for AI and Milvus modules by overwriting files
 # Fixes:
 # 1. drupal/ai: isMultiple() crashes on computed fields (node_grants, role_access)
-# 2. drupal/ai_vdb_provider_milvus: Access control filtering with array_contains()
-# 3. drupal/ai_vdb_provider_milvus: Enable dynamic fields to store access metadata
+# 2. drupal/ai: EmbeddingBase::getValue() must return arrays for list fields
+# 3. drupal/ai_vdb_provider_milvus: Access control filtering with array_contains()
+# 4. drupal/ai_vdb_provider_milvus: Enable dynamic fields to store access metadata
 apply_module_patches() {
     local workspace_root
     workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -455,95 +456,40 @@ apply_module_patches() {
     echo -e "${BOLD}Step: Apply Module Patches${NC}"
     echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-    # Check if patches are already configured
-    if grep -q "fix-isMultiple-null-datasource.patch" "$repo_dir/composer.json" 2>/dev/null && \
-       grep -q "fix-access-control-list-fields.patch" "$repo_dir/composer.json" 2>/dev/null; then
-        echo ""
-        log "INFO" "All patches already configured in composer.json"
-        echo ""
-        return 0
-    fi
-
     echo ""
     log "INFO" "Applying patches for Search API access control with Milvus..."
     log "INFO" "Patches:"
     log "INFO" "  - drupal/ai: Fix isMultiple() for computed fields"
+    log "INFO" "  - drupal/ai: Fix getValue() to return arrays for list fields"
     log "INFO" "  - drupal/ai_vdb_provider_milvus: Use array_contains() for list fields"
     log "INFO" "  - drupal/ai_vdb_provider_milvus: Enable dynamic fields for access metadata"
     echo ""
 
-    # Copy all patch files
-    local ai_patch_source="${workspace_root}/patches/ai"
-    local ai_patch_target="${repo_dir}/patches/ai"
-    local milvus_patch_source="${workspace_root}/patches/ai_vdb_provider_milvus"
-    local milvus_patch_target="${repo_dir}/patches/ai_vdb_provider_milvus"
+    # Patch files source
+    local patches_source="${workspace_root}/patches"
 
-    mkdir -p "$ai_patch_target" "$milvus_patch_target"
+    # Target module directories
+    local ai_module="${repo_dir}/web/modules/contrib/ai"
+    local milvus_module="${repo_dir}/web/modules/contrib/ai_vdb_provider_milvus"
 
-    if [ -d "$ai_patch_source" ]; then
-        cp "$ai_patch_source"/*.patch "$ai_patch_target/" 2>/dev/null
-        log "INFO" "✓ AI module patches copied"
+    # Copy patched AI module files
+    if [ -d "$patches_source/ai/files" ]; then
+        cp "$patches_source/ai/files/AiVdbProviderClientBase.php" "$ai_module/src/Base/" 2>/dev/null && \
+            log "INFO" "✓ Patched: AiVdbProviderClientBase.php"
+        cp "$patches_source/ai/files/EmbeddingBase.php" "$ai_module/modules/ai_search/src/Plugin/EmbeddingStrategy/" 2>/dev/null && \
+            log "INFO" "✓ Patched: EmbeddingBase.php"
     fi
 
-    if [ -d "$milvus_patch_source" ]; then
-        cp "$milvus_patch_source"/*.patch "$milvus_patch_target/" 2>/dev/null
-        log "INFO" "✓ Milvus provider patches copied"
+    # Copy patched Milvus provider files
+    if [ -d "$patches_source/ai_vdb_provider_milvus/files" ]; then
+        cp "$patches_source/ai_vdb_provider_milvus/files/MilvusProvider.php" "$milvus_module/src/Plugin/VdbProvider/" 2>/dev/null && \
+            log "INFO" "✓ Patched: MilvusProvider.php"
+        cp "$patches_source/ai_vdb_provider_milvus/files/MilvusV2.php" "$milvus_module/src/" 2>/dev/null && \
+            log "INFO" "✓ Patched: MilvusV2.php"
     fi
 
-    # Configure all patches in composer.json
     echo ""
-    log "INFO" "Configuring patches in composer.json..."
-
-    (cd "$repo_dir" && ddev exec php -r "
-        \$composerJson = json_decode(file_get_contents('composer.json'), true);
-
-        // Ensure extra.patches section exists
-        if (!isset(\$composerJson['extra'])) {
-            \$composerJson['extra'] = [];
-        }
-        if (!isset(\$composerJson['extra']['patches'])) {
-            \$composerJson['extra']['patches'] = [];
-        }
-
-        // Add patches for drupal/ai
-        \$composerJson['extra']['patches']['drupal/ai'] = [
-            'Fix isMultiple() null datasource for computed fields' => 'patches/ai/fix-isMultiple-null-datasource.patch'
-        ];
-
-        // Add patches for drupal/ai_vdb_provider_milvus
-        \$composerJson['extra']['patches']['drupal/ai_vdb_provider_milvus'] = [
-            'Fix access control filtering with array_contains for list fields' => 'patches/ai_vdb_provider_milvus/fix-access-control-list-fields.patch',
-            'Enable dynamic fields in Milvus to store access metadata' => 'patches/ai_vdb_provider_milvus/enable-dynamic-fields.patch'
-        ];
-
-        // Write back
-        file_put_contents('composer.json', json_encode(\$composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
-        echo 'All patches configured';
-    ")
-
-    if [ $? -ne 0 ]; then
-        echo ""
-        echo -e "${YELLOW}${BOLD}⚠ Warning: Failed to configure patches${NC}"
-        return 1
-    fi
-
-    log "INFO" "✓ Patches configured in composer.json"
-
-    # Apply patches via composer install
-    echo ""
-    log "INFO" "Applying patches via composer install..."
-    echo ""
-
-    (cd "$repo_dir" && ddev composer install)
-
-    if [ $? -eq 0 ]; then
-        echo ""
-        log "INFO" "✓ All patches applied successfully"
-    else
-        echo ""
-        echo -e "${YELLOW}${BOLD}⚠ Warning: Some patches may not have been applied correctly${NC}"
-    fi
-
+    log "INFO" "✓ All patches applied successfully"
     echo ""
 }
 
